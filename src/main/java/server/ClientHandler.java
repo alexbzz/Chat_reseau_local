@@ -49,6 +49,16 @@ public class ClientHandler implements Runnable {
     private void handleConnect(Message message) {
         this.pseudo = message.getPseudo();
         System.out.println("[Server] " + pseudo + " a rejoint le chat.");
+
+        // Envoyer la liste des déjà connectés au nouveau client
+        for (String p : registry.getPseudos()) {
+            if (!p.equals(pseudo)) {
+                Message info = new Message(MessageType.SERVER_INFO, "", p + " a rejoint le chat");
+                sendRaw(MessageSerializer.serialize(info));
+            }
+        }
+
+        // Informer tous les autres
         Message info = new Message(MessageType.SERVER_INFO, "", pseudo + " a rejoint le chat");
         registry.broadcast(info, this);
     }

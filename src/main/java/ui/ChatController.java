@@ -34,13 +34,20 @@ public class ChatController {
         try {
             client.connect();
 
+            // Ajouter son propre pseudo dans la liste dès la connexion
+            Platform.runLater(() -> {
+                if (!view.getUsersList().getItems().contains(client.getPseudo())) {
+                    view.getUsersList().getItems().add(client.getPseudo());
+                }
+            });
+
             receiver = new MessageReceiver(client.getReader(), this::handleMessage);
             Thread t = new Thread(receiver);
             t.setDaemon(true);
             t.start();
 
         } catch (IOException e) {
-            view.getMessagesList().getItems().add(" Impossible de se connecter : " + e.getMessage());
+            view.getMessagesList().getItems().add("Impossible de se connecter : " + e.getMessage());
         }
     }
 
@@ -96,7 +103,6 @@ public class ChatController {
         view.getInputField().clear();
     }
 
-    /** Appelé à la fermeture de la fenêtre */
     public void disconnect() {
         if (receiver != null) receiver.stop();
         if (client != null) client.disconnect();
