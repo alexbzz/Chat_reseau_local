@@ -12,6 +12,7 @@ import java.time.Instant;
 import java.time.LocalTime;
 import java.time.ZoneId;
 import java.time.format.DateTimeFormatter;
+import protocol.CryptoUtils;
 
 public class ChatController {
 
@@ -66,9 +67,14 @@ public class ChatController {
                 ZoneId.systemDefault()
         ).format(TIME_FMT);
 
+        // Déchiffrer le contenu si c'est un message TEXT
+        String contenu = message.getType() == MessageType.TEXT
+                ? CryptoUtils.decrypt(message.getContenu())
+                : message.getContenu();
+
         String formatted = switch (message.getType()) {
-            case TEXT        -> "[" + time + "] " + message.getPseudo() + " : " + message.getContenu();
-            case SERVER_INFO -> "[INFO] " + message.getContenu();
+            case TEXT        -> "[" + time + "] " + message.getPseudo() + " : " + contenu;
+            case SERVER_INFO -> "[INFO] " + contenu;
             case CONNECT     -> "[+] " + message.getPseudo() + " a rejoint le chat";
             case DISCONNECT  -> "[-] " + message.getPseudo() + " a quitté le chat";
         };

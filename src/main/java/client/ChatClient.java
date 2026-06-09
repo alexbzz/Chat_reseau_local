@@ -1,5 +1,6 @@
 package client;
 
+import protocol.CryptoUtils;
 import protocol.Message;
 import protocol.MessageSerializer;
 import protocol.MessageType;
@@ -37,7 +38,15 @@ public class ChatClient {
 
     public void sendMessage(String contenu) {
         if (!connected) return;
-        Message msg = new Message(MessageType.TEXT, pseudo, contenu);
+        String encrypted = CryptoUtils.encrypt(contenu);
+        Message msg = new Message(MessageType.TEXT, pseudo, encrypted);
+        writer.println(MessageSerializer.serialize(msg));
+    }
+
+    public void sendPrivate(String destinataire, String contenu) {
+        if (!connected) return;
+        String encrypted = CryptoUtils.encrypt("/msg " + destinataire + " " + contenu);
+        Message msg = new Message(MessageType.TEXT, pseudo, encrypted);
         writer.println(MessageSerializer.serialize(msg));
     }
 
@@ -55,12 +64,7 @@ public class ChatClient {
         }
         System.out.println("[Client] Déconnecté.");
     }
-    public void sendPrivate(String destinataire, String contenu) {
-        if (!connected) return;
-        // On encode le destinataire dans le contenu : "destinataire:message"
-        Message msg = new Message(MessageType.TEXT, pseudo, "/msg " + destinataire + " " + contenu);
-        writer.println(MessageSerializer.serialize(msg));
-    }
+
     public BufferedReader getReader() { return reader; }
     public String getPseudo()         { return pseudo; }
     public boolean isConnected()      { return connected; }

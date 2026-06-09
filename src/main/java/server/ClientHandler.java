@@ -6,6 +6,7 @@ import protocol.MessageType;
 
 import java.io.*;
 import java.net.Socket;
+import protocol.CryptoUtils;
 
 public class ClientHandler implements Runnable {
 
@@ -80,10 +81,10 @@ public class ClientHandler implements Runnable {
     }
 
     private void handleText(Message message) {
-        String contenu = message.getContenu();
+        System.out.println("[Server][RAW] " + message.getContenu()); // contenu chiffré brut
+        String contenu = CryptoUtils.decrypt(message.getContenu());
 
         if (contenu.startsWith("/msg ")) {
-            // Message privé
             String[] parts = contenu.split(" ", 3);
             if (parts.length < 3) return;
             String destinataire = parts[1];
@@ -95,23 +96,27 @@ public class ClientHandler implements Runnable {
                 sendRaw(MessageSerializer.serialize(erreur));
                 return;
             }
-            Message prive = new Message(MessageType.TEXT, message.getPseudo(), "[PRIVE] " + texte);
+            // Re-chiffrer pour le destinataire
+            Message prive = new Message(MessageType.TEXT, message.getPseudo(),
+                    CryptoUtils.encrypt("[PRIVE] " + texte));
             dest.sendRaw(MessageSerializer.serialize(prive));
 
         } else if (contenu.startsWith("/join ")) {
-            // Changer de salon
             String[] parts = contenu.split(" ", 2);
             if (parts.length < 2) return;
-            String newRoom = parts[1].trim();
-            handleJoin(newRoom);
+            handleJoin(parts[1].trim());
 
         } else {
-            // Message normal dans le salon courant
             System.out.println("[Server][" + room + "] " + pseudo + " : " + contenu);
-            registry.addToHistorique(room, message);
+            // Stocker le message déchiffré dans l'historique
+            Message decrypted = new Message(message.getType(), message.getPseudo(),
+                    CryptoUtils.encrypt(contenu), message.getTimestamp());
+            registry.addToHistorique(room, decrypted);
             registry.broadcastToRoom(message, room, null);
         }
+
     }
+
 
     private void handleJoin(String newRoom) {
         // Quitter l'ancien salon
