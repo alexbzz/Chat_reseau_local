@@ -1,6 +1,5 @@
 import client.ChatClient;
 import client.MessageReceiver;
-import protocol.Message;
 import server.ChatServer;
 
 import java.io.IOException;
@@ -21,7 +20,13 @@ public class Main {
             lancerClientConsole(host, pseudo);
 
         } else {
-            System.out.println("Interface JavaFX : à venir (étape 3)");
+            Scanner sc = new Scanner(System.in);
+            System.out.print("Ton pseudo : ");
+            ui.ChatApp.PSEUDO = sc.nextLine();
+            System.out.print("IP du serveur (entree = localhost) : ");
+            String host = sc.nextLine();
+            ui.ChatApp.HOST = host.isBlank() ? "localhost" : host;
+            ui.ChatApp.main(args);
         }
     }
 
@@ -38,7 +43,6 @@ public class Main {
             receiverThread.setDaemon(true);
             receiverThread.start();
 
-            // Boucle de saisie dans le terminal
             Scanner scanner = new Scanner(System.in);
             System.out.println("Tape tes messages (ou 'quit' pour quitter) :");
             while (scanner.hasNextLine()) {
