@@ -33,9 +33,9 @@ public class ClientHandler implements Runnable {
                 if (message == null) continue;
 
                 switch (message.getType()) {
-                    case CONNECT     -> handleConnect(message);
-                    case TEXT        -> handleText(message);
-                    case DISCONNECT  -> { handleDisconnect(message); return; }
+                    case CONNECT    -> handleConnect(message);
+                    case TEXT       -> handleText(message);
+                    case DISCONNECT -> { handleDisconnect(message); return; }
                     default -> System.err.println("[Handler] Type non géré : " + message.getType());
                 }
             }
@@ -47,7 +47,18 @@ public class ClientHandler implements Runnable {
     }
 
     private void handleConnect(Message message) {
-        this.pseudo = message.getPseudo();
+        String demandedPseudo = message.getPseudo();
+
+        // Refuser si le pseudo est déjà pris
+        if (registry.isPseudoTaken(demandedPseudo)) {
+            Message refus = new Message(MessageType.SERVER_INFO, "", "PSEUDO_TAKEN");
+            sendRaw(MessageSerializer.serialize(refus));
+            System.out.println("[Server] Pseudo déjà pris : " + demandedPseudo);
+            cleanup();
+            return;
+        }
+
+        this.pseudo = demandedPseudo;
         System.out.println("[Server] " + pseudo + " a rejoint le chat.");
 
         // Envoyer la liste des déjà connectés au nouveau client
@@ -75,7 +86,7 @@ public class ClientHandler implements Runnable {
 
     private void cleanup() {
         registry.unregister(this);
-        if (pseudo != null && !pseudo.isBlank()) {
+        if (pseudo != null && !pseudo.isBlank() && !pseudo.equals("inconnu")) {
             Message info = new Message(MessageType.SERVER_INFO, "", pseudo + " a quitté le chat");
             registry.broadcast(info, this);
         }

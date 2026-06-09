@@ -52,6 +52,15 @@ public class ChatController {
     }
 
     private void handleMessage(Message message) {
+        // Cas spécial : pseudo déjà pris
+        if (message.getType() == MessageType.SERVER_INFO
+                && message.getContenu().equals("PSEUDO_TAKEN")) {
+            Platform.runLater(() ->
+                    view.getMessagesList().getItems().add("[ERREUR] Ce pseudo est déjà pris !")
+            );
+            return;
+        }
+
         String time = LocalTime.ofInstant(
                 Instant.ofEpochMilli(message.getTimestamp()),
                 ZoneId.systemDefault()

@@ -29,6 +29,12 @@ public class ClientRegistry {
         }
     }
 
+    /** Vérifie si un pseudo est déjà utilisé par un client connecté */
+    public boolean isPseudoTaken(String pseudo) {
+        return clients.stream()
+                .anyMatch(c -> pseudo.equalsIgnoreCase(c.getPseudo()));
+    }
+
     public List<String> getPseudos() {
         return clients.stream()
                 .map(ClientHandler::getPseudo)
