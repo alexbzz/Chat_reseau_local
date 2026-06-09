@@ -108,7 +108,28 @@ public class ChatController {
     private void sendMessage() {
         String text = view.getInputField().getText().trim();
         if (text.isEmpty()) return;
-        client.sendMessage(text);
+
+        if (text.startsWith("/msg ")) {
+            // Format : /msg <pseudo> <message>
+            String[] parts = text.split(" ", 3);
+            if (parts.length < 3) {
+                Platform.runLater(() ->
+                        view.getMessagesList().getItems().add("[ERREUR] Format : /msg <pseudo> <message>")
+                );
+                view.getInputField().clear();
+                return;
+            }
+            String destinataire = parts[1];
+            String contenu = parts[2];
+            client.sendPrivate(destinataire, contenu);
+            String time = LocalTime.now().format(TIME_FMT);
+            Platform.runLater(() ->
+                    view.getMessagesList().getItems().add("[" + time + "] [PRIVE -> " + destinataire + "] " + contenu)
+            );
+        } else {
+            client.sendMessage(text);
+        }
+
         view.getInputField().clear();
     }
 

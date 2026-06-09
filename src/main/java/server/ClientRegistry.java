@@ -59,4 +59,10 @@ public class ClientRegistry {
                 .filter(p -> p != null && !p.isBlank())
                 .toList();
     }
+    public ClientHandler getClientByPseudo(String pseudo) {
+        return clients.stream()
+                .filter(c -> pseudo.equalsIgnoreCase(c.getPseudo()))
+                .findFirst()
+                .orElse(null);
+    }
 }

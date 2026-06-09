@@ -79,9 +79,32 @@ public class ClientHandler implements Runnable {
     }
 
     private void handleText(Message message) {
-        System.out.println("[Server] " + pseudo + " : " + message.getContenu());
-        registry.addToHistorique(message); // Sauvegarder dans l'historique
-        registry.broadcast(message, null);
+        String contenu = message.getContenu();
+
+        if (contenu.startsWith("/msg ")) {
+            String[] parts = contenu.split(" ", 3);
+            if (parts.length < 3) return;
+
+            String destinataire = parts[1];
+            String texte = parts[2];
+
+            ClientHandler dest = registry.getClientByPseudo(destinataire);
+            if (dest == null) {
+                Message erreur = new Message(MessageType.SERVER_INFO, "",
+                        "Utilisateur introuvable : " + destinataire);
+                sendRaw(MessageSerializer.serialize(erreur));
+                return;
+            }
+
+            Message prive = new Message(MessageType.TEXT, message.getPseudo(), "[PRIVE] " + texte);
+            dest.sendRaw(MessageSerializer.serialize(prive));
+            System.out.println("[Server] Message privé de " + pseudo + " vers " + destinataire);
+
+        } else {
+            System.out.println("[Server] " + pseudo + " : " + contenu);
+            registry.addToHistorique(message);
+            registry.broadcast(message, null);
+        }
     }
 
     private void handleDisconnect(Message message) {

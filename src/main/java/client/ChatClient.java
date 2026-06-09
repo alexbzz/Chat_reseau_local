@@ -55,7 +55,12 @@ public class ChatClient {
         }
         System.out.println("[Client] Déconnecté.");
     }
-
+    public void sendPrivate(String destinataire, String contenu) {
+        if (!connected) return;
+        // On encode le destinataire dans le contenu : "destinataire:message"
+        Message msg = new Message(MessageType.TEXT, pseudo, "/msg " + destinataire + " " + contenu);
+        writer.println(MessageSerializer.serialize(msg));
+    }
     public BufferedReader getReader() { return reader; }
     public String getPseudo()         { return pseudo; }
     public boolean isConnected()      { return connected; }
