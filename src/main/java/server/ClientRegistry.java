@@ -3,12 +3,18 @@ package server;
 import protocol.Message;
 import protocol.MessageSerializer;
 
+import java.util.ArrayDeque;
+import java.util.Deque;
 import java.util.List;
 import java.util.concurrent.CopyOnWriteArrayList;
 
 public class ClientRegistry {
 
     private final CopyOnWriteArrayList<ClientHandler> clients = new CopyOnWriteArrayList<>();
+
+    // Historique des 50 derniers messages
+    private final Deque<Message> historique = new ArrayDeque<>();
+    private static final int MAX_HISTORIQUE = 50;
 
     public void register(ClientHandler handler) {
         clients.add(handler);
@@ -29,7 +35,19 @@ public class ClientRegistry {
         }
     }
 
-    /** Vérifie si un pseudo est déjà utilisé par un client connecté */
+    /** Ajoute un message à l'historique */
+    public synchronized void addToHistorique(Message message) {
+        if (historique.size() >= MAX_HISTORIQUE) {
+            historique.pollFirst();
+        }
+        historique.addLast(message);
+    }
+
+    /** Retourne une copie de l'historique */
+    public synchronized List<Message> getHistorique() {
+        return List.copyOf(historique);
+    }
+
     public boolean isPseudoTaken(String pseudo) {
         return clients.stream()
                 .anyMatch(c -> pseudo.equalsIgnoreCase(c.getPseudo()));

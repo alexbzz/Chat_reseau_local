@@ -49,7 +49,6 @@ public class ClientHandler implements Runnable {
     private void handleConnect(Message message) {
         String demandedPseudo = message.getPseudo();
 
-        // Refuser si le pseudo est déjà pris
         if (registry.isPseudoTaken(demandedPseudo)) {
             Message refus = new Message(MessageType.SERVER_INFO, "", "PSEUDO_TAKEN");
             sendRaw(MessageSerializer.serialize(refus));
@@ -61,7 +60,12 @@ public class ClientHandler implements Runnable {
         this.pseudo = demandedPseudo;
         System.out.println("[Server] " + pseudo + " a rejoint le chat.");
 
-        // Envoyer la liste des déjà connectés au nouveau client
+        // Envoyer l'historique au nouveau client
+        for (Message msg : registry.getHistorique()) {
+            sendRaw(MessageSerializer.serialize(msg));
+        }
+
+        // Envoyer la liste des déjà connectés
         for (String p : registry.getPseudos()) {
             if (!p.equals(pseudo)) {
                 Message info = new Message(MessageType.SERVER_INFO, "", p + " a rejoint le chat");
@@ -76,6 +80,7 @@ public class ClientHandler implements Runnable {
 
     private void handleText(Message message) {
         System.out.println("[Server] " + pseudo + " : " + message.getContenu());
+        registry.addToHistorique(message); // Sauvegarder dans l'historique
         registry.broadcast(message, null);
     }
 
