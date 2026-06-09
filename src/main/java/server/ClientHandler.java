@@ -15,6 +15,7 @@ public class ClientHandler implements Runnable {
     private BufferedReader reader;
     private PrintWriter writer;
     private String pseudo = "inconnu";
+    private String room = "general"; // salon par défaut
 
     public ClientHandler(Socket socket, ClientRegistry registry) {
         this.socket = socket;
@@ -60,34 +61,33 @@ public class ClientHandler implements Runnable {
         this.pseudo = demandedPseudo;
         System.out.println("[Server] " + pseudo + " a rejoint le chat.");
 
-        // Envoyer l'historique au nouveau client
-        for (Message msg : registry.getHistorique()) {
+        // Envoyer l'historique du salon general au nouveau client
+        for (Message msg : registry.getHistorique("general")) {
             sendRaw(MessageSerializer.serialize(msg));
         }
 
-        // Envoyer la liste des déjà connectés
-        for (String p : registry.getPseudos()) {
+        // Envoyer la liste des connectés dans le même salon
+        for (String p : registry.getPseudosInRoom("general")) {
             if (!p.equals(pseudo)) {
                 Message info = new Message(MessageType.SERVER_INFO, "", p + " a rejoint le chat");
                 sendRaw(MessageSerializer.serialize(info));
             }
         }
 
-        // Informer tous les autres
+        // Informer les autres du salon
         Message info = new Message(MessageType.SERVER_INFO, "", pseudo + " a rejoint le chat");
-        registry.broadcast(info, this);
+        registry.broadcastToRoom(info, "general", this);
     }
 
     private void handleText(Message message) {
         String contenu = message.getContenu();
 
         if (contenu.startsWith("/msg ")) {
+            // Message privé
             String[] parts = contenu.split(" ", 3);
             if (parts.length < 3) return;
-
             String destinataire = parts[1];
             String texte = parts[2];
-
             ClientHandler dest = registry.getClientByPseudo(destinataire);
             if (dest == null) {
                 Message erreur = new Message(MessageType.SERVER_INFO, "",
@@ -95,16 +95,46 @@ public class ClientHandler implements Runnable {
                 sendRaw(MessageSerializer.serialize(erreur));
                 return;
             }
-
             Message prive = new Message(MessageType.TEXT, message.getPseudo(), "[PRIVE] " + texte);
             dest.sendRaw(MessageSerializer.serialize(prive));
-            System.out.println("[Server] Message privé de " + pseudo + " vers " + destinataire);
+
+        } else if (contenu.startsWith("/join ")) {
+            // Changer de salon
+            String[] parts = contenu.split(" ", 2);
+            if (parts.length < 2) return;
+            String newRoom = parts[1].trim();
+            handleJoin(newRoom);
 
         } else {
-            System.out.println("[Server] " + pseudo + " : " + contenu);
-            registry.addToHistorique(message);
-            registry.broadcast(message, null);
+            // Message normal dans le salon courant
+            System.out.println("[Server][" + room + "] " + pseudo + " : " + contenu);
+            registry.addToHistorique(room, message);
+            registry.broadcastToRoom(message, room, null);
         }
+    }
+
+    private void handleJoin(String newRoom) {
+        // Quitter l'ancien salon
+        Message left = new Message(MessageType.SERVER_INFO, "", pseudo + " a quitté le salon #" + room);
+        registry.broadcastToRoom(left, room, this);
+
+        // Rejoindre le nouveau salon
+        String oldRoom = room;
+        this.room = newRoom;
+
+        Message joined = new Message(MessageType.SERVER_INFO, "", pseudo + " a rejoint le salon #" + newRoom);
+        registry.broadcastToRoom(joined, newRoom, this);
+
+        // Confirmer au client
+        Message confirm = new Message(MessageType.SERVER_INFO, "", "Vous avez rejoint le salon #" + newRoom);
+        sendRaw(MessageSerializer.serialize(confirm));
+
+        // Envoyer l'historique du nouveau salon
+        for (Message msg : registry.getHistorique(newRoom)) {
+            sendRaw(MessageSerializer.serialize(msg));
+        }
+
+        System.out.println("[Server] " + pseudo + " : #" + oldRoom + " -> #" + newRoom);
     }
 
     private void handleDisconnect(Message message) {
@@ -116,7 +146,7 @@ public class ClientHandler implements Runnable {
         registry.unregister(this);
         if (pseudo != null && !pseudo.isBlank() && !pseudo.equals("inconnu")) {
             Message info = new Message(MessageType.SERVER_INFO, "", pseudo + " a quitté le chat");
-            registry.broadcast(info, this);
+            registry.broadcastToRoom(info, room, this);
         }
         try {
             if (reader != null) reader.close();
@@ -134,4 +164,5 @@ public class ClientHandler implements Runnable {
     }
 
     public String getPseudo() { return pseudo; }
+    public String getRoom()   { return room; }
 }

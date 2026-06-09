@@ -110,7 +110,6 @@ public class ChatController {
         if (text.isEmpty()) return;
 
         if (text.startsWith("/msg ")) {
-            // Format : /msg <pseudo> <message>
             String[] parts = text.split(" ", 3);
             if (parts.length < 3) {
                 Platform.runLater(() ->
@@ -126,6 +125,16 @@ public class ChatController {
             Platform.runLater(() ->
                     view.getMessagesList().getItems().add("[" + time + "] [PRIVE -> " + destinataire + "] " + contenu)
             );
+
+        } else if (text.startsWith("/join ")) {
+            // Changer de salon
+            client.sendMessage(text);
+            String[] parts = text.split(" ", 2);
+            String salon = parts.length > 1 ? parts[1].trim() : "general";
+            Platform.runLater(() ->
+                    view.getMessagesList().getItems().add("[INFO] Vous avez rejoint le salon #" + salon)
+            );
+
         } else {
             client.sendMessage(text);
         }

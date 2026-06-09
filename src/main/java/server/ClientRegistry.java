@@ -3,17 +3,16 @@ package server;
 import protocol.Message;
 import protocol.MessageSerializer;
 
-import java.util.ArrayDeque;
-import java.util.Deque;
-import java.util.List;
+import java.util.*;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.CopyOnWriteArrayList;
 
 public class ClientRegistry {
 
     private final CopyOnWriteArrayList<ClientHandler> clients = new CopyOnWriteArrayList<>();
 
-    // Historique des 50 derniers messages
-    private final Deque<Message> historique = new ArrayDeque<>();
+    // Historique par salon : Map<nomSalon, Deque<Message>>
+    private final ConcurrentHashMap<String, Deque<Message>> historiques = new ConcurrentHashMap<>();
     private static final int MAX_HISTORIQUE = 50;
 
     public void register(ClientHandler handler) {
@@ -26,6 +25,17 @@ public class ClientRegistry {
         System.out.println("[Registry] Client retiré. Total : " + clients.size());
     }
 
+    /** Broadcast à tous les clients d'un salon donné */
+    public void broadcastToRoom(Message message, String room, ClientHandler exclude) {
+        String serialized = MessageSerializer.serialize(message);
+        for (ClientHandler client : clients) {
+            if (client != exclude && room.equals(client.getRoom())) {
+                client.sendRaw(serialized);
+            }
+        }
+    }
+
+    /** Broadcast à tous les clients (toutes rooms) */
     public void broadcast(Message message, ClientHandler exclude) {
         String serialized = MessageSerializer.serialize(message);
         for (ClientHandler client : clients) {
@@ -35,17 +45,27 @@ public class ClientRegistry {
         }
     }
 
-    /** Ajoute un message à l'historique */
-    public synchronized void addToHistorique(Message message) {
-        if (historique.size() >= MAX_HISTORIQUE) {
-            historique.pollFirst();
-        }
-        historique.addLast(message);
+    /** Ajoute un message à l'historique d'un salon */
+    public synchronized void addToHistorique(String room, Message message) {
+        historiques.putIfAbsent(room, new ArrayDeque<>());
+        Deque<Message> hist = historiques.get(room);
+        if (hist.size() >= MAX_HISTORIQUE) hist.pollFirst();
+        hist.addLast(message);
     }
 
-    /** Retourne une copie de l'historique */
-    public synchronized List<Message> getHistorique() {
-        return List.copyOf(historique);
+    /** Retourne l'historique d'un salon */
+    public synchronized List<Message> getHistorique(String room) {
+        Deque<Message> hist = historiques.get(room);
+        return hist == null ? List.of() : List.copyOf(hist);
+    }
+
+    /** Retourne les pseudos connectés dans un salon donné */
+    public List<String> getPseudosInRoom(String room) {
+        return clients.stream()
+                .filter(c -> room.equals(c.getRoom()))
+                .map(ClientHandler::getPseudo)
+                .filter(p -> p != null && !p.isBlank())
+                .toList();
     }
 
     public boolean isPseudoTaken(String pseudo) {
@@ -59,6 +79,7 @@ public class ClientRegistry {
                 .filter(p -> p != null && !p.isBlank())
                 .toList();
     }
+
     public ClientHandler getClientByPseudo(String pseudo) {
         return clients.stream()
                 .filter(c -> pseudo.equalsIgnoreCase(c.getPseudo()))
